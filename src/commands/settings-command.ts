@@ -91,7 +91,7 @@ class AddRuleSubmenu implements Component {
     }
 
     return [
-      this.theme.label(" + Add policy", true),
+      this.theme.label("+ Add policy", true),
       "",
       this.theme.hint("  Enter policy name:"),
       ...this.nameInput.render(width - 2).map((line) => ` ${line}`),

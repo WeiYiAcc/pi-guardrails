@@ -33,9 +33,9 @@ interface CompiledRule {
   enabled: boolean;
 }
 
-async function fileExists(filePath: string): Promise<boolean> {
+async function fileExists(cwd: string, filePath: string): Promise<boolean> {
   try {
-    await stat(resolve(filePath));
+    await stat(resolve(cwd, filePath));
     return true;
   } catch {
     return false;
@@ -74,18 +74,25 @@ function compileRules(rules: PolicyRule[]): CompiledRule[] {
       continue;
     }
 
-    if (!Array.isArray(rule.patterns) || rule.patterns.length === 0) {
+    const normalizedPatterns = (rule.patterns ?? []).filter(
+      (pattern) => pattern.pattern.trim().length > 0,
+    );
+    if (normalizedPatterns.length === 0) {
       pendingWarnings.push(
-        `[guardrails] skipping policy rule "${id}": missing patterns.`,
+        `[guardrails] skipping policy rule "${id}": missing non-empty patterns.`,
       );
       continue;
     }
 
+    const normalizedAllowedPatterns = (rule.allowedPatterns ?? []).filter(
+      (pattern) => pattern.pattern.trim().length > 0,
+    );
+
     compiled.push({
       id,
       protection: rule.protection,
-      patterns: compileFilePatterns(rule.patterns),
-      allowedPatterns: compileFilePatterns(rule.allowedPatterns ?? []),
+      patterns: compileFilePatterns(normalizedPatterns),
+      allowedPatterns: compileFilePatterns(normalizedAllowedPatterns),
       onlyIfExists: rule.onlyIfExists ?? true,
       blockMessage:
         rule.blockMessage ?? DEFAULT_BLOCK_MESSAGES[rule.protection] ?? "",
@@ -188,6 +195,7 @@ async function extractBashFileTargets(
 async function getEffectiveProtection(
   filePath: string,
   compiledRules: CompiledRule[],
+  cwd: string,
 ): Promise<{
   protection: Protection;
   blockMessage: string;
@@ -211,7 +219,7 @@ async function getEffectiveProtection(
     );
     if (allowed) continue;
 
-    if (rule.onlyIfExists && !(await fileExists(filePath))) continue;
+    if (rule.onlyIfExists && !(await fileExists(cwd, filePath))) continue;
 
     const rank = protectionRank(rule.protection);
     if (!bestMatch || rank > bestMatch.rank) {
@@ -257,7 +265,11 @@ export function setupPoliciesHook(pi: ExtensionAPI, config: ResolvedConfig) {
     }
 
     for (const target of targets) {
-      const effective = await getEffectiveProtection(target, compiledRules);
+      const effective = await getEffectiveProtection(
+        target,
+        compiledRules,
+        ctx.cwd,
+      );
       if (!effective) continue;
 
       const blockedTools = BLOCKED_TOOLS[effective.protection];

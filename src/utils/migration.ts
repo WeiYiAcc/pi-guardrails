@@ -158,6 +158,13 @@ export function migrateEnvFilesToPolicies(
       }
     }
 
+    if (Array.isArray(envFiles.protectedTools)) {
+      pendingWarnings.push(
+        "[guardrails] envFiles.protectedTools is deprecated and has no direct policies equivalent. " +
+          "The migrated secret-files rule uses protection=noAccess.",
+      );
+    }
+
     if (!Array.isArray(rule.patterns) || rule.patterns.length === 0) {
       rule.patterns = [
         { pattern: ".env" },

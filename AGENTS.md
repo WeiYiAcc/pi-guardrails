@@ -25,10 +25,11 @@ pnpm changeset    # Create changeset for versioning
 ```
 src/
   index.ts            # Extension entry, registers hooks and commands
-  config.ts           # Configuration loading, schema, and defaults
-  hooks/              # Event hooks (permission gate, env file protection)
-  commands/           # Slash commands (settings UI)
+  config.ts           # Configuration loading, schema, defaults, merge logic
+  hooks/              # Event hooks (policies + permission gate)
+  commands/           # Slash commands (settings UI, add-policy)
   components/         # UI components (pattern editor)
+  lib/                # Vendored subagent executor core (Phase 1)
   utils/              # Helpers (matching, glob expansion, migration, shell AST)
 ```
 
@@ -36,9 +37,10 @@ src/
 
 - New hooks: follow patterns in `src/hooks/`
 - Built-in dangerous command matching uses AST parsing via `@aliou/sh`; user-configured patterns use substring/regex matching
+- File protection is policy-based (`features.policies`, `policies.rules`), not legacy `envFiles`
 - Config migrations are predicate-based (`shouldRun`) using structural checks; do not rely on lexicographic version string comparisons
 - `config.version` is a schema marker for debugging/inspection, not the package version
-- Events emitted on the pi event bus for inter-extension communication
+- Events emitted on the pi event bus for inter-extension communication (`guardrails:blocked`, `guardrails:dangerous`)
 
 ## Versioning
 
